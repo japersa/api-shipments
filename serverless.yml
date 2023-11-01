@@ -1,0 +1,338 @@
+service: api-shipments
+
+plugins:
+  - serverless-webpack
+  - serverless-offline
+  - serverless-prune-plugin
+
+custom:
+  webpack:
+    includeModules:
+      forceExclude:
+        - aws-sdk
+        - typescript
+    webpackConfig: ./webpack.config.js
+
+provider:
+  name: aws
+  stage: dev
+  region: eu-west-1
+  runtime: nodejs16.x
+  memorySize: 512
+  timeout: 10
+  endpointType: REGIONAL
+  environment:
+    ORDERS_TABLE_NAME: 'orders'
+    CLIENTS_TABLE_NAME: 'clients'
+    CITIES_TABLE_NAME: 'cities'
+    DESTINY_TYPES_TABLE_NAME: 'destinyTypes'
+    SUBSIDIARIES_TABLE_NAME: 'subsidiaries'
+    SHIPMENTS_TABLE_NAME: 'shipments'
+    SETTINGS_TABLE_NAME: 'settings'
+    CLIENT_QUOTES_TABLE_NAME: 'clientQuotes'
+    COVERAGE_MATRIX_TABLE_NAME: 'coverageMatrix'
+    MATRIX_CASH_ID: 0
+    CONSECUTIVE_SETTINGS_ID: 1
+    PAYMENT_METHOD_CREDIT: 2
+    OBSERVATION_ORDER: 'ORDEN CREADA AUTOMÁTICAMENTE PARA EL SERVICIO DE ECOMMERCE'
+    PACKAGE_PRODUCT_ID: 774
+    DELIVERY_MANAGER_ECOMMERCE: 'SERVICIOS ECOMMERCE'
+    NORMAL_TIME: 13
+    URGENT_TIME: 12
+    INMEDIATE_TIME: 11
+    COURIER_TYPE_PACKAGE_ID: 127
+    LOADED_PACKAGE_TYPE: 2
+    ECOMMERCE_PACKAGE_TYPE: 1
+    WEIGHT_RANGE_QUOTE_MODEL: 2
+    EXTRA_KILO_QUOTE_MODEL: 1
+    KG_LIMIT: 10
+    PAY_METHOD_CREDIT: 2
+    PAY_METHOD_CASH: 1
+    PRODUCT_TYPE_ID: 57
+    URL_TRACKING: 'https://pruebasorion.infokairos.com.co/envios/&guia&/tracking/cliente'
+    STATUS_CREATED_SHIPMENT: 'Created'
+    INDEX_CLIENTS_TOKEN: 'token-index'
+    INDEX_CITIES_DIVIPOLA: 'divipola-index'
+    INDEX_CITIES_NAME: 'name-index'
+    INDEX_ORDERS_CLIENTID: 'clientId-index'
+    INDEX_DESTINYTYPES_CITY: 'cityId-index'
+    INDEX_DESTINYTYPES_DESTINY_TYPE_ID: 'destinyTypeId-index'
+    INDEX_SUBSIDIARIES_CITY: 'cityId-index'
+    INDEX_CLIENTQUOTE_CLIENT_ID: 'clientId-index'
+    INDEX_COVERAGE_MATRIX_CLIENTID: 'clientId-index'
+    NUMBER_PARTS_PROPERTY: 'cantidad_piezas'
+    DECLARED_VALUE_PROPERTY: 'valor_declarado'
+    INVOICE_PROPERTY: 'factura'
+    REQUEST_NUMBER_PROPERTY: 'numero_de_pedido'
+    PRODUCT_PROPERTY: 'producto'
+    SERVICE_TYPE_PROPERTY: 'tipo_de_servicio'
+    HIGH_PROPERTY: 'alto'
+    WIDTH_PROPERTY: 'ancho'
+    LENGTH_PROPERTY: 'largo'
+    WEIGHT_PROPERTY: 'peso'
+    VALUE_COLLECTED_PROPERTY: 'valor_a_recaudar'
+    LOADED_ON_BASE_STATUS_ID: 5
+    DECLARED_VALUE_LIMIT: 2000
+    KG_TOLERANCE: 0.5
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'dynamodb:Query'
+        - 'dynamodb:Scan'
+        - 'dynamodb:GetItem'
+        - 'dynamodb:PutItem'
+        - 'dynamodb:UpdateItem'
+        - 'dynamodb:DeleteItem'
+        - 's3:PutObject'
+        - 's3:GetObject'
+        - 's3:DeleteObject'
+      Resource:
+        - arn:aws:dynamodb:eu-west-1:*:table/orders
+        - arn:aws:dynamodb:eu-west-1:*:table/clients
+        - arn:aws:dynamodb:eu-west-1:*:table/cities
+        - arn:aws:dynamodb:eu-west-1:*:table/destinyTypes
+        - arn:aws:dynamodb:eu-west-1:*:table/subsidiaries
+        - arn:aws:dynamodb:eu-west-1:*:table/shipments
+        - arn:aws:dynamodb:eu-west-1:*:table/settings
+        - arn:aws:dynamodb:eu-west-1:*:table/clientQuotes
+        - arn:aws:dynamodb:eu-west-1:*:table/guidesForPrinting
+        - arn:aws:dynamodb:eu-west-1:*:table/coverageMatrix
+        - 'arn:aws:dynamodb:eu-west-1:*:table/orders/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/clients/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/cities/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/destinyTypes/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/subsidiaries/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/shipments/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/settings/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/clientQuotes/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/guidesForPrinting/index/*'
+        - 'arn:aws:dynamodb:eu-west-1:*:table/coverageMatrix/index/*'
+        - 'arn:aws:s3:::orion-services-bucket/*'
+
+resources:
+  Resources:
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: orders
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: clientId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: clientId-index
+            KeySchema:
+              - AttributeName: clientId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    ClientsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: clients
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: token
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: 'token-index'
+            KeySchema:
+              - AttributeName: token
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    CitiesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: cities
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: divipola
+            AttributeType: S
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: 'divipola-index'
+            KeySchema:
+              - AttributeName: divipola
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: 'name-index'
+            KeySchema:
+              - AttributeName: name
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    DestinyTypesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: destinyTypes
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: cityId
+            AttributeType: N
+          - AttributeName: destinyTypeId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: 'cityId-index'
+            KeySchema:
+              - AttributeName: cityId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: 'destinyTypeId-index'
+            KeySchema:
+              - AttributeName: destinyTypeId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    SubsidiariesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: subsidiaries
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: cityId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: 'cityId-index'
+            KeySchema:
+              - AttributeName: cityId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    ShipmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: shipments
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+    SettingsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: settings
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+    ClientQuotesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: clientQuotes
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: clientId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: 'clientId-index'
+            KeySchema:
+              - AttributeName: clientId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    CoverageMatrixTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: coverageMatrix
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: clientId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: 'clientId-index'
+            KeySchema:
+              - AttributeName: clientId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+outputs:
+  OrdersTable:
+    Description: Table Created using this template.
+    Value: !Ref OrdersTable
+  ClientsTable:
+    Description: Table Created using this template.
+    Value: !Ref ClientsTable
+  CitiesTable:
+    Description: Table Created using this template.
+    Value: !Ref CitiesTable
+  DestinyTypesTable:
+    Description: Table Created using this template.
+    Value: !Ref DestinyTypesTable
+  SubsidiariesTable:
+    Description: Table Created using this template.
+    Value: !Ref SubsidiariesTable
+  ShipmentsTable:
+    Description: Table Created using this template.
+    Value: !Ref ShipmentsTable
+  SettingsTable:
+    Description: Table Created using this template.
+    Value: !Ref SettingsTable
+  ClientQuotesTable:
+    Description: Table Created using this template.
+    Value: !Ref ClientQuotesTable
+  CoverageMatrixTable:
+    Description: Table Created using this template.
+    Value: !Ref CoverageMatrixTable
+
+
+functions:
+  main:
+    handler: src/main.handler
+    events:
+      - http:
+          method: ANY
+          path: /api-shipments
+          cors:
+            origins:
+              - '*'
+      - http:
+          method: ANY
+          cors:
+            origins:
+              - '*'
+          path: '{proxy+}'
